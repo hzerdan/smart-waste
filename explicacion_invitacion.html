@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Flujo Conceptual de Invitación en Supabase Auth</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-6 sm:p-8">
+  <div class="max-w-4xl mx-auto space-y-8">
+    
+    <!-- Encabezado Principal -->
+    <header class="border-b border-[var(--border)] pb-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20 mb-3">
+        Arquitectura Web & Seguridad
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+        ¿Cómo funciona realmente una Invitación de Usuario?
+      </h1>
+      <p class="text-[var(--muted-foreground)] text-sm sm:text-base mt-2 leading-relaxed">
+        Tu intuición sobre el "pasaporte" es muy acertada, pero la mecánica web tiene una escala intermedia clave: <strong class="text-[var(--foreground)]">el canje en el servidor de autenticación</strong>.
+      </p>
+    </header>
+
+    <!-- Comparativa: Intuición vs Realidad -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm space-y-3">
+        <div class="flex items-center gap-2 text-amber-400 font-semibold text-sm">
+          <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Tu Intuición (Lo que se percibe)
+        </div>
+        <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+          1. Se "prepara una página HTML" especial para cada invitación.<br>
+          2. El usuario viaja con su token directo a esa página.<br>
+          3. La página atiende el token y no está logueado, solo presenta el "pasaporte".
+        </p>
+      </div>
+
+      <div class="bg-[var(--card)] border border-emerald-500/30 rounded-2xl p-5 shadow-sm space-y-3 bg-emerald-500/5">
+        <div class="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+          <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          La Realidad (Bajo el capó)
+        </div>
+        <p class="text-xs text-[var(--foreground)] leading-relaxed">
+          1. <strong>La página HTML es genérica y única</strong> (no se crea una por persona).<br>
+          2. El clic del email va primero a <strong>Supabase (el servidor)</strong>, no a tu web.<br>
+          3. Supabase verifica el token, y <strong>lo loguea temporalmente</strong> antes de redirigirlo a tu pantalla para que cree su contraseña.
+        </p>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: Diagrama de la Secuencia -->
+    <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-[var(--foreground)] flex items-center gap-2">
+            <span>Diagrama de la Secuencia</span>
+          </h2>
+          <p class="text-xs text-[var(--muted-foreground)] mt-0.5">
+            Interacción cronológica entre los cinco actores del flujo de invitación.
+          </p>
+        </div>
+        <span class="text-xs text-violet-400 font-semibold bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/20 self-start sm:self-auto">
+          Protocolo OAuth2 / PKCE + JWT
+        </span>
+      </div>
+
+      <!-- Imagen Original Incrustada -->
+      <div class="rounded-xl overflow-hidden border border-[var(--border)] bg-slate-900/50 p-2">
+        <img 
+          src=".user_uploaded/media_1791986181496_7d171423.png" 
+          alt="Diagrama de secuencia de la invitación" 
+          class="w-full h-auto rounded-lg shadow-md"
+        />
+      </div>
+      <p class="text-[11px] text-[var(--muted-foreground)] text-center italic">
+        Flujo de comunicación entre Admin, Edge Function, Supabase Auth, Invitado y Frontend Smart Waste.
+      </p>
+    </section>
+
+    <!-- Pasos Detallados con Explicaciones Completas -->
+    <section class="space-y-4">
+      <h2 class="text-lg font-bold text-[var(--foreground)] flex items-center gap-2">
+        <span>El Ciclo de Vida Explicado en 5 Actos</span>
+      </h2>
+
+      <div class="space-y-4 text-sm">
+        
+        <!-- Acto 1 -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 relative overflow-hidden transition-all hover:border-violet-500/40">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center font-bold shrink-0 text-sm">
+              1
+            </div>
+            <div class="flex-1 space-y-2">
+              <h3 class="font-bold text-[var(--foreground)] text-base">Acto 1: El Admin envía la invitación</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                El Administrador completa el formulario en la app. La Edge Function <code class="text-violet-300">invite-user</code> llama a Supabase Auth en el servidor con permisos seguros. En ese instante exacto, Supabase realiza dos acciones automáticas:
+              </p>
+              <ul class="list-disc list-inside text-xs text-[var(--muted-foreground)] space-y-1 pl-1">
+                <li>Crea un registro de <strong>usuario provisional</strong> en la base de datos interna (<code class="text-slate-300 font-mono">auth.users</code>), guardando su email, fecha de invitación pero dejando la contraseña vacía y <code class="text-slate-300 font-mono">confirmed_at = null</code>.</li>
+                <li>Genera un <strong>token criptográfico único y firmado</strong> (un hash de un solo uso que expira automáticamente en 24 horas).</li>
+              </ul>
+              <div class="mt-2 text-xs font-mono bg-black/30 p-2.5 rounded-lg border border-[var(--border)] text-slate-300">
+                auth.users &rarr; { email: "usuario@empresa.com", invited_at: "2026-10-14...", confirmed_at: null }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acto 2 -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 relative overflow-hidden transition-all hover:border-violet-500/40">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center font-bold shrink-0 text-sm">
+              2
+            </div>
+            <div class="flex-1 space-y-2">
+              <h3 class="font-bold text-[var(--foreground)] text-base">Acto 2: El Correo: El Pasaporte y la Parada Oculta</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                El usuario recibe el correo con el botón "Aceptar Invitación". El enlace que contiene ese botón <strong>NO</strong> va directo a tu sitio web, sino al servidor de Supabase Auth:
+              </p>
+              <div class="mt-2 text-xs font-mono bg-black/30 p-2.5 rounded-lg border border-[var(--border)] text-violet-300 break-all">
+                https://scnkevcuphhyetedpuhe.supabase.co/auth/v1/verify?token=XYZ&type=invite&redirect_to=http://localhost:5173/establecer-password
+              </div>
+              <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                <p class="text-xs font-semibold text-amber-300">
+                  ¿Por qué ocurrió el error 404 antes?
+                </p>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Porque cuando no le pasábamos <code class="text-amber-200 font-mono">redirect_to</code> explícito, Supabase usaba su valor de fábrica (<code class="text-rose-300 font-mono">http://localhost:3000</code>). Como en el puerto 3000 había otro servidor backend corriendo, ese servidor rechazó la petición con <code class="text-rose-300 font-mono">Cannot GET /</code>. Al especificar <code class="text-emerald-300 font-mono">http://localhost:5173/establecer-password</code>, el navegador es dirigido a nuestro frontend de Vite.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acto 3 -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 relative overflow-hidden transition-all hover:border-emerald-500/40">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0 text-sm">
+              3
+            </div>
+            <div class="flex-1 space-y-2">
+              <h3 class="font-bold text-[var(--foreground)] text-base">Acto 3: El Canje en Supabase: Se emite la Sesión</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Cuando el navegador del usuario golpea la puerta de Supabase (<code class="text-slate-300 font-mono">/auth/v1/verify</code>):
+              </p>
+              <ul class="list-disc list-inside text-xs text-[var(--muted-foreground)] space-y-1 pl-1">
+                <li>Supabase comprueba que el token coincida con el usuario.</li>
+                <li><strong>Quema el token de un solo uso</strong>: si alguien vuelve a hacer clic en el mismo email más tarde, ya no servirá.</li>
+                <li>Emite inmediatamente una orden de redirección HTTP 302 hacia el navegador.</li>
+              </ul>
+              <blockquote class="text-xs italic text-[var(--muted-foreground)] border-l-2 border-emerald-500 pl-3 my-2">
+                "¡Token válido! Navegador, te entrego este <code class="text-slate-300 font-mono">access_token</code> de sesión temporal y te redirijo inmediatamente a <code class="text-emerald-300 font-mono">http://localhost:5173/establecer-password#access_token=...</code>".
+              </blockquote>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acto 4 -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 relative overflow-hidden transition-all hover:border-violet-500/40">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center font-bold shrink-0 text-sm">
+              4
+            </div>
+            <div class="flex-1 space-y-2">
+              <h3 class="font-bold text-[var(--foreground)] text-base">Acto 4: Aterrizaje en tu Frontend: Establecer Contraseña</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                El navegador del usuario llega a la pantalla <code class="text-slate-300 font-mono">EstablecerPassword.tsx</code> en nuestra aplicación.
+              </p>
+              <ul class="list-disc list-inside text-xs text-[var(--muted-foreground)] space-y-1 pl-1">
+                <li>La librería de Supabase en el frontend detecta el <code class="text-slate-300 font-mono">access_token</code> en la URL y reconoce al usuario en memoria: <em>"Bienvenido, sabemos que sos usuario@empresa.com, pero tu cuenta requiere una contraseña para activarse"</em>.</li>
+                <li>El usuario no necesita ingresar ninguna contraseña anterior (porque nunca tuvo una). Solo ingresa su nueva clave y la confirmación.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acto 5 -->
+        <div class="bg-[var(--card)] border border-emerald-500/30 rounded-2xl p-5 relative overflow-hidden bg-emerald-500/5">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shrink-0 text-sm">
+              ✓
+            </div>
+            <div class="flex-1 space-y-2">
+              <h3 class="font-bold text-emerald-400 text-base">Acto 5: El Registro queda Completo y Activo</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Al pulsar "Guardar Contraseña", el frontend ejecuta la llamada a Supabase:
+              </p>
+              <div class="mt-2 text-xs font-mono bg-black/40 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-300">
+                supabase.auth.updateUser({ password: "mi_password_secreta" })
+              </div>
+              <p class="text-xs text-[var(--foreground)] pt-1 font-semibold">
+                En ese instante ocurren tres transformaciones fundamentales:
+              </p>
+              <ul class="list-disc list-inside text-xs text-[var(--muted-foreground)] space-y-1 pl-1">
+                <li>Se guarda el hash criptográfico seguro de la contraseña definitiva.</li>
+                <li>El campo <code class="text-slate-200 font-mono">confirmed_at</code> en la base de datos deja de ser <em>NULL</em> y se sella con la fecha/hora actual.</li>
+                <li>El badge <strong>"Invitación pendiente"</strong> desaparece de la vista del Administrador porque la cuenta ya está formalmente activa.</li>
+                <li>El usuario es redirigido automáticamente a su Dashboard respectivo según su rol, y en sus próximos ingresos iniciará sesión normalmente con su email y contraseña.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Resumen Sintético -->
+    <div class="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs text-[var(--muted-foreground)] flex items-center justify-between gap-4">
+      <div>
+        <strong class="text-[var(--foreground)]">En resumen:</strong> No se generan páginas individuales; el token es una llave de un solo uso que viaja al servidor de Supabase para canjearse por una sesión temporal, permitiendo al usuario fijar su contraseña en una pantalla común de tu frontend.
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
