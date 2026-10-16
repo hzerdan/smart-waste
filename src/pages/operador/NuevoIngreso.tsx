@@ -11,6 +11,7 @@ import {
   User, 
   FileText, 
   Camera, 
+  Image as ImageIcon,
   AlertCircle, 
   CheckCircle2,
   ArrowRight,
@@ -168,6 +169,7 @@ export default function NuevoIngreso() {
 
       if (selectedFiles.length + newFiles.length > 5) {
         setErrorMsg('Límite superado. Solo puedes adjuntar hasta 5 fotos por registro.')
+        e.target.value = ''
         return
       }
 
@@ -175,10 +177,12 @@ export default function NuevoIngreso() {
       for (const file of newFiles) {
         if (!allowedTypes.includes(file.type)) {
           setErrorMsg(`Tipo de archivo no permitido: ${file.name}. Solo se aceptan JPEG, PNG o WEBP.`)
+          e.target.value = ''
           return
         }
         if (file.size / (1024 * 1024) > 10) {
           setErrorMsg(`El archivo ${file.name} supera el tamaño máximo permitido de 10MB.`)
+          e.target.value = ''
           return
         }
       }
@@ -186,6 +190,7 @@ export default function NuevoIngreso() {
       const newUrls = newFiles.map(f => URL.createObjectURL(f))
       setSelectedFiles(prev => [...prev, ...newFiles])
       setPreviewUrls(prev => [...prev, ...newUrls])
+      e.target.value = ''
     }
   }
 
@@ -582,24 +587,46 @@ export default function NuevoIngreso() {
                 </span>
               </label>
 
+              {/* Input para tomar foto con la cámara directa */}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+                id="operator-camera-input"
+                disabled={submitting || selectedFiles.length >= 5}
+              />
+
+              {/* Input para seleccionar desde archivos / galería */}
               <input
                 type="file"
                 multiple
                 accept="image/*"
                 onChange={handleFileChange}
                 className="hidden"
-                id="operator-photos"
+                id="operator-gallery-input"
                 disabled={submitting || selectedFiles.length >= 5}
               />
 
               {selectedFiles.length < 5 && (
-                <label
-                  htmlFor="operator-photos"
-                  className="flex items-center justify-center gap-2 w-full py-4 px-4 bg-slate-900/40 border border-dashed border-slate-800 hover:border-violet-500/50 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer text-sm font-medium"
-                >
-                  <Camera className="w-4 h-4 text-violet-400" />
-                  <span>Adjuntar fotos de residuo (JPG, PNG o WEBP - máx. 10MB)</span>
-                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    htmlFor="operator-camera-input"
+                    className="flex items-center justify-center gap-2.5 py-3.5 px-4 bg-violet-500/10 border border-dashed border-violet-500/30 hover:border-violet-500 rounded-xl text-violet-300 hover:text-white transition-all cursor-pointer text-sm font-semibold text-center"
+                  >
+                    <Camera className="w-4 h-4 text-violet-400" />
+                    <span>Tomar Foto con Cámara</span>
+                  </label>
+
+                  <label
+                    htmlFor="operator-gallery-input"
+                    className="flex items-center justify-center gap-2.5 py-3.5 px-4 bg-slate-900/40 border border-dashed border-slate-800 hover:border-slate-700 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer text-sm font-medium text-center"
+                  >
+                    <ImageIcon className="w-4 h-4 text-slate-400" />
+                    <span>Elegir de Galería</span>
+                  </label>
+                </div>
               )}
 
               {/* Grid de Thumbnails */}

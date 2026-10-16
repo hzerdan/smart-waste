@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { Camera, CheckCircle, AlertCircle, RefreshCw, Trash2, ArrowUpCircle } from 'lucide-react'
+import { Camera, Image as ImageIcon, CheckCircle, AlertCircle, RefreshCw, Trash2, ArrowUpCircle } from 'lucide-react'
 
 export default function SubirFotos() {
   const [searchParams] = useSearchParams()
@@ -70,6 +70,7 @@ export default function SubirFotos() {
       // Validar cantidad máxima
       if (files.length + selected.length > 5) {
         setErrorMsg('Límite superado. Solo puedes subir hasta 5 fotos en total.')
+        e.target.value = ''
         return
       }
 
@@ -78,10 +79,12 @@ export default function SubirFotos() {
       for (const file of selected) {
         if (!allowedTypes.includes(file.type)) {
           setErrorMsg(`Tipo de archivo no soportado: ${file.name}. Solo se aceptan JPEG, PNG y WEBP.`)
+          e.target.value = ''
           return
         }
         if (file.size / (1024 * 1024) > 10) {
           setErrorMsg(`El archivo ${file.name} es demasiado grande. Máximo 10MB por foto.`)
+          e.target.value = ''
           return
         }
       }
@@ -89,6 +92,7 @@ export default function SubirFotos() {
       const newPreviews = selected.map(file => URL.createObjectURL(file))
       setFiles(prev => [...prev, ...selected])
       setPreviews(prev => [...prev, ...newPreviews])
+      e.target.value = ''
     }
   }
 
@@ -109,6 +113,7 @@ export default function SubirFotos() {
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/upload-via-magic-link`
 
       const formData = new FormData()
@@ -119,13 +124,17 @@ export default function SubirFotos() {
 
       const response = await fetch(edgeFunctionUrl, {
         method: 'POST',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
         body: formData
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Ocurrió un error al subir las fotos.')
+        throw new Error(result.error || result.message || 'Ocurrió un error al subir las fotos.')
       }
 
       setSuccess(true)
@@ -209,25 +218,52 @@ export default function SubirFotos() {
 
             {/* Photo Selection Area */}
             <div className="space-y-4">
+              {/* Input exclusivo para abrir la cámara de fotos directamente en smartphones */}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+                id="camera-capture-input"
+                disabled={uploading || files.length >= 5}
+              />
+
+              {/* Input para elegir de la galería o archivos */}
               <input
                 type="file"
                 multiple
                 accept="image/*"
                 onChange={handleFileChange}
                 className="hidden"
-                id="depositante-photos"
-                disabled={uploading}
+                id="gallery-picker-input"
+                disabled={uploading || files.length >= 5}
               />
               
               {files.length < 5 && (
-                <label
-                  htmlFor="depositante-photos"
-                  className="flex flex-col items-center justify-center gap-2 py-8 border-2 border-dashed border-slate-800 hover:border-violet-500/50 bg-slate-900/20 hover:bg-violet-500/5 rounded-2xl cursor-pointer transition-all text-slate-400 hover:text-white"
-                >
-                  <Camera className="w-10 h-10 text-slate-500" />
-                  <span className="font-semibold text-sm">Tomar Foto o Elegir Archivos</span>
-                  <span className="text-[10px] text-slate-500">Máximo 5 imágenes. JPG, PNG o WEBP de hasta 10MB.</span>
-                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    htmlFor="camera-capture-input"
+                    className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-violet-500/40 hover:border-violet-400 bg-violet-500/5 hover:bg-violet-500/10 rounded-2xl cursor-pointer transition-all text-violet-300 hover:text-white text-center shadow-inner"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                    <span className="font-bold text-sm">Tomar Foto con Cámara</span>
+                    <span className="text-[11px] text-slate-400">Abre la cámara del celular al instante</span>
+                  </label>
+
+                  <label
+                    htmlFor="gallery-picker-input"
+                    className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-slate-800 hover:border-slate-700 bg-slate-900/30 hover:bg-slate-900/60 rounded-2xl cursor-pointer transition-all text-slate-400 hover:text-white text-center"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-300">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                    <span className="font-bold text-sm">Elegir de Galería</span>
+                    <span className="text-[11px] text-slate-500">Selecciona imágenes ya guardadas</span>
+                  </label>
+                </div>
               )}
 
               {/* Previews List */}
