@@ -26,6 +26,9 @@ import ReporteMensual from '../pages/reportes/ReporteMensual'
 import SubirFotos from '../pages/magic-link/SubirFotos'
 import EstablecerPassword from '../pages/EstablecerPassword'
 
+// Manual de Usuario
+import UserManual from '../pages/manual/UserManual'
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -170,6 +173,16 @@ export default function AppRouter() {
         element={
           <ProtectedRoute allowedRoles={['administrador', 'supervisor_global', 'supervisor_cliente']}>
             <ReporteMensual />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Manual de Usuario (Accesible para todos los roles autenticados) */}
+      <Route
+        path="/manual"
+        element={
+          <ProtectedRoute>
+            <UserManual />
           </ProtectedRoute>
         }
       />

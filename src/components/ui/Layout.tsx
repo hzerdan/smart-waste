@@ -20,7 +20,8 @@ import {
   ChevronDown,
   Database,
   ClipboardList,
-  Scale
+  Scale,
+  BookOpen
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -68,6 +69,9 @@ export default function Layout({ children }: LayoutProps) {
   const operacionItems: NavItem[] = []
   const masterItems: NavItem[] = []
   const adminItems: NavItem[] = []
+  const helpItems: NavItem[] = [
+    { name: 'Manual de Usuario', path: '/manual', icon: BookOpen }
+  ]
 
   // 1. Reportes y Dashboards
   if (isAdmin || isSupervisorGlobal) {
@@ -276,6 +280,31 @@ export default function Layout({ children }: LayoutProps) {
           })}
         </div>
       )}
+
+      {/* Ayuda & Documentación */}
+      <div className="space-y-1">
+        <div className="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+          Documentación
+        </div>
+        {helpItems.map((item) => {
+          const isActive = location.pathname === item.path
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={onItemClick}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                isActive 
+                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/20' 
+                  : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+              }`}
+            >
+              <item.icon className="w-4 h-4 text-violet-400" />
+              <span>{item.name}</span>
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 
