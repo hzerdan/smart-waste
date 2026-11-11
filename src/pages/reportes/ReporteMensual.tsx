@@ -19,7 +19,10 @@ import {
   Sparkles, 
   Scale, 
   Edit3,
-  X
+  X,
+  Plus,
+  CheckSquare,
+  Square
 } from 'lucide-react'
 
 interface MetadatosInforme {
@@ -30,6 +33,27 @@ interface MetadatosInforme {
   ocupacion_patio_rrpp_pct?: number
   tareas_sitio?: string[]
   conclusiones?: string
+}
+
+export interface PatioItem {
+  patio_id: number
+  patio_nombre: string
+  patio_codigo: string | null
+  patio_tipo: string
+  capacidad_nominal: number | null
+  unidad_capacidad: string
+  descripcion: string | null
+  porcentaje_ocupacion: number
+  observaciones: string | null
+}
+
+export interface TareaItem {
+  tarea_id: number
+  tarea_nombre: string
+  tarea_categoria: string
+  orden: number
+  completada: boolean
+  detalle_adicional: string | null
 }
 
 interface ResumenCorriente {
@@ -138,6 +162,8 @@ export default function ReporteMensual() {
 
   // Bloques del informe
   const [metadatos, setMetadatos] = useState<MetadatosInforme>({})
+  const [patios, setPatios] = useState<PatioItem[]>([])
+  const [tareas, setTareas] = useState<TareaItem[]>([])
   const [corrientes, setCorrientes] = useState<ResumenCorriente[]>([])
   const [sectores, setSectores] = useState<ResumenSector[]>([])
   const [desvios, setDesvios] = useState<DesvioItem[]>([])
@@ -147,11 +173,16 @@ export default function ReporteMensual() {
 
   // Modal para configurar bitácora y patios
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
-  const [editOcupacionRSU, setEditOcupacionRSU] = useState<number>(20)
-  const [editOcupacionRRPP, setEditOcupacionRRPP] = useState<number>(30)
   const [editNumeroInforme, setEditNumeroInforme] = useState<number>(7)
   const [editConclusiones, setEditConclusiones] = useState<string>('')
-  const [editTareas, setEditTareas] = useState<string>('')
+  const [editPatios, setEditPatios] = useState<PatioItem[]>([])
+  const [editTareas, setEditTareas] = useState<TareaItem[]>([])
+  const [nuevaTareaTexto, setNuevaTareaTexto] = useState<string>('')
+  const [showAddPatio, setShowAddPatio] = useState(false)
+  const [nuevoPatioNombre, setNuevoPatioNombre] = useState('')
+  const [nuevoPatioTipo, setNuevoPatioTipo] = useState<'rsu' | 'rrpp' | 'inerte' | 'reciclable' | 'general' | 'mixto'>('general')
+  const [nuevoPatioCapacidad, setNuevoPatioCapacidad] = useState<number | ''>('')
+  const [nuevoPatioUnidad, setNuevoPatioUnidad] = useState('m2')
   const [savingConfig, setSavingConfig] = useState(false)
 
   // Cargar lista de clientes si es admin o supervisor global
@@ -198,6 +229,8 @@ export default function ReporteMensual() {
       if (data) {
         const payload = data as {
           metadatos?: MetadatosInforme
+          patios?: PatioItem[]
+          tareas?: TareaItem[]
           resumen_corrientes?: ResumenCorriente[]
           resumen_sectores?: ResumenSector[]
           desvios?: DesvioItem[]
@@ -206,6 +239,8 @@ export default function ReporteMensual() {
         }
 
         setMetadatos(payload.metadatos || {})
+        setPatios(payload.patios || [])
+        setTareas(payload.tareas || [])
         setCorrientes(payload.resumen_corrientes || [])
         setSectores(payload.resumen_sectores || [])
         setDesvios(payload.desvios || [])
@@ -215,11 +250,10 @@ export default function ReporteMensual() {
         // Inicializar formulario de edición
         if (payload.metadatos) {
           setEditNumeroInforme(payload.metadatos.numero_informe || selectedMes)
-          setEditOcupacionRSU(payload.metadatos.ocupacion_patio_rsu_pct ?? 20)
-          setEditOcupacionRRPP(payload.metadatos.ocupacion_patio_rrpp_pct ?? 30)
           setEditConclusiones(payload.metadatos.conclusiones || '')
-          setEditTareas((payload.metadatos.tareas_sitio || []).join('\n'))
         }
+        setEditPatios(payload.patios || [])
+        setEditTareas(payload.tareas || [])
       }
 
       // 2. Traer fotos de ingresos del mes para la galería de evidencia
@@ -272,31 +306,33 @@ export default function ReporteMensual() {
     }
   }, [fetchInforme, selectedClienteId])
 
-  // Guardar configuración de bitácora y patios
+  // Guardar configuración de bitácora y patios mediante RPC atómico
   const handleGuardarConfig = async () => {
     if (!selectedClienteId) return
     setSavingConfig(true)
     try {
-      const tareasArray = editTareas
-        .split('\n')
-        .map((t) => t.trim())
-        .filter(Boolean)
+      const patiosPayload = editPatios.map((p) => ({
+        patio_id: p.patio_id,
+        porcentaje_ocupacion: Number(p.porcentaje_ocupacion) || 0,
+        observaciones: p.observaciones || null
+      }))
 
-      const payload = {
-        cliente_id: selectedClienteId,
-        periodo_anio: selectedAnio,
-        periodo_mes: selectedMes,
-        numero_informe: editNumeroInforme,
-        ocupacion_patio_rsu_pct: editOcupacionRSU,
-        ocupacion_patio_rrpp_pct: editOcupacionRRPP,
-        tareas_sitio: tareasArray,
-        conclusiones: editConclusiones,
-        updated_at: new Date().toISOString()
-      }
+      const tareasPayload = editTareas.map((t) => ({
+        tarea_id: t.tarea_id,
+        completada: t.completada,
+        detalle_adicional: t.detalle_adicional || null
+      }))
 
-      const { error } = await supabase
-        .from('informes_mensuales')
-        .upsert(payload, { onConflict: 'cliente_id,periodo_anio,periodo_mes' })
+      const { error } = await supabase.rpc('guardar_auditoria_informe_mensual', {
+        p_cliente_id: selectedClienteId,
+        p_anio: selectedAnio,
+        p_mes: selectedMes,
+        p_numero_informe: editNumeroInforme,
+        p_titulo: metadatos.titulo || 'Informe Mensual de Gestión de Residuos',
+        p_conclusiones: editConclusiones,
+        p_patios: patiosPayload,
+        p_tareas: tareasPayload
+      })
 
       if (error) throw error
       setIsConfigModalOpen(false)
@@ -305,6 +341,84 @@ export default function ReporteMensual() {
       alert('Error al guardar configuración: ' + (e instanceof Error ? e.message : 'Error desconocido'))
     } finally {
       setSavingConfig(false)
+    }
+  }
+
+  // Agregar nueva tarea al catálogo del cliente
+  const handleAgregarTarea = async () => {
+    if (!selectedClienteId || !nuevaTareaTexto.trim()) return
+    try {
+      const { data, error } = await supabase
+        .from('tareas_sitio')
+        .insert({
+          cliente_id: selectedClienteId,
+          nombre: nuevaTareaTexto.trim(),
+          categoria: 'operacion',
+          orden: editTareas.length + 1,
+          activo: true
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      if (data) {
+        setEditTareas((prev) => [
+          ...prev,
+          {
+            tarea_id: data.id,
+            tarea_nombre: data.nombre,
+            tarea_categoria: data.categoria,
+            orden: data.orden,
+            completada: true,
+            detalle_adicional: null
+          }
+        ])
+        setNuevaTareaTexto('')
+      }
+    } catch (err: unknown) {
+      alert('Error al agregar tarea: ' + (err instanceof Error ? err.message : 'Error'))
+    }
+  }
+
+  // Agregar nuevo patio al catálogo del cliente
+  const handleAgregarPatio = async () => {
+    if (!selectedClienteId || !nuevoPatioNombre.trim()) return
+    try {
+      const { data, error } = await supabase
+        .from('patios')
+        .insert({
+          cliente_id: selectedClienteId,
+          nombre: nuevoPatioNombre.trim(),
+          tipo: nuevoPatioTipo,
+          capacidad_nominal: nuevoPatioCapacidad ? Number(nuevoPatioCapacidad) : null,
+          unidad_capacidad: nuevoPatioUnidad,
+          activo: true
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      if (data) {
+        setEditPatios((prev) => [
+          ...prev,
+          {
+            patio_id: data.id,
+            patio_nombre: data.nombre,
+            patio_codigo: data.codigo,
+            patio_tipo: data.tipo,
+            capacidad_nominal: data.capacidad_nominal ? Number(data.capacidad_nominal) : null,
+            unidad_capacidad: data.unidad_capacidad,
+            descripcion: data.descripcion,
+            porcentaje_ocupacion: 0,
+            observaciones: null
+          }
+        ])
+        setNuevoPatioNombre('')
+        setNuevoPatioCapacidad('')
+        setShowAddPatio(false)
+      }
+    } catch (err: unknown) {
+      alert('Error al agregar patio: ' + (err instanceof Error ? err.message : 'Error'))
     }
   }
 
@@ -610,80 +724,81 @@ export default function ReporteMensual() {
           </div>
         </div>
 
-        {/* Semáforos de Ocupación de Patios (Capacidad Operativa) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-break-inside">
-          {/* Patio RSU */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 card-print">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Estado de Acopio</span>
-                <h3 className="text-lg font-bold text-white mt-0.5">Patio de Residuos Sólidos (RSU)</h3>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                (metadatos.ocupacion_patio_rsu_pct ?? 20) <= 30
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : (metadatos.ocupacion_patio_rsu_pct ?? 20) <= 70
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
-              }`}>
-                {(metadatos.ocupacion_patio_rsu_pct ?? 20) <= 30 ? 'Baja Ocupación' : (metadatos.ocupacion_patio_rsu_pct ?? 20) <= 70 ? 'Media Ocupación' : 'Alta Ocupación'}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Capacidad en Uso:</span>
-                <strong className="text-white">{metadatos.ocupacion_patio_rsu_pct ?? 20}%</strong>
-              </div>
-              <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden p-0.5">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    (metadatos.ocupacion_patio_rsu_pct ?? 20) <= 30 ? 'bg-emerald-500' : (metadatos.ocupacion_patio_rsu_pct ?? 20) <= 70 ? 'bg-amber-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(100, metadatos.ocupacion_patio_rsu_pct ?? 20)}%` }}
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-2">
-                El patio continúa con un <strong>{100 - (metadatos.ocupacion_patio_rsu_pct ?? 20)}% de espacio disponible</strong> para maniobra de equipos y recambio de compactadoras.
-              </p>
-            </div>
+        {/* Semáforos de Ocupación de Patios (Capacidad Operativa Discriminada por Cliente) */}
+        <div>
+          <div className="flex items-center justify-between mb-3 no-print">
+            <h2 className="text-base font-bold text-slate-200 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-violet-400" />
+              Estado y Capacidad de Patios de Acopio en Faena
+            </h2>
+            <span className="text-xs text-slate-400">
+              {patios.length} {patios.length === 1 ? 'patio registrado' : 'patios registrados'}
+            </span>
           </div>
 
-          {/* Patio RRPP */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 card-print">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Estado de Acopio</span>
-                <h3 className="text-lg font-bold text-white mt-0.5">Patio de Residuos Peligrosos (RRPP)</h3>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                (metadatos.ocupacion_patio_rrpp_pct ?? 30) <= 30
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : (metadatos.ocupacion_patio_rrpp_pct ?? 30) <= 70
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
-              }`}>
-                {(metadatos.ocupacion_patio_rrpp_pct ?? 30) <= 30 ? 'Baja Ocupación' : (metadatos.ocupacion_patio_rrpp_pct ?? 30) <= 70 ? 'Media Ocupación' : 'Alta Ocupación'}
-              </span>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print-break-inside">
+            {patios.length > 0 ? (
+              patios.map((p) => {
+                const pct = Number(p.porcentaje_ocupacion) || 0
+                const estadoBadge = pct <= 30 
+                  ? { label: 'Baja Ocupación', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', bar: 'bg-emerald-500' }
+                  : pct <= 70
+                  ? { label: 'Media Ocupación', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', bar: 'bg-amber-500' }
+                  : { label: 'Alta Ocupación', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30', bar: 'bg-rose-500' }
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Capacidad en Uso:</span>
-                <strong className="text-white">{metadatos.ocupacion_patio_rrpp_pct ?? 30}%</strong>
+                return (
+                  <div key={p.patio_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 card-print flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                              {p.patio_tipo.toUpperCase()}
+                            </span>
+                            {p.capacidad_nominal && (
+                              <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+                                Cap: {p.capacidad_nominal} {p.unidad_capacidad}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-base font-bold text-white mt-1 leading-snug">{p.patio_nombre}</h3>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${estadoBadge.color} shrink-0`}>
+                          {estadoBadge.label}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 mt-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-400">Capacidad en Uso:</span>
+                          <strong className="text-white font-mono text-base">{pct}%</strong>
+                        </div>
+                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden p-0.5">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${estadoBadge.bar}`}
+                            style={{ width: `${Math.min(100, pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-400 mt-4 pt-3 border-t border-slate-800/80">
+                      {p.observaciones || (
+                        pct <= 30
+                          ? `El patio cuenta con un ${100 - pct}% de espacio libre disponible para maniobra de equipos y recambio de contenedores.`
+                          : pct <= 70
+                          ? `Ocupación moderada. Se recomienda coordinar retiro de corrientes acumuladas para preservar capacidad operativa.`
+                          : `Atención: Alta ocupación. Requiere programar retiro urgente de residuos con transportista autorizado.`
+                      )}
+                    </p>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="col-span-full py-8 text-center text-slate-500 bg-slate-900 border border-slate-800 rounded-2xl">
+                No hay patios configurados para este cliente. Utilice &quot;Auditar Patios / Tareas&quot; para registrar patios.
               </div>
-              <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden p-0.5">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    (metadatos.ocupacion_patio_rrpp_pct ?? 30) <= 30 ? 'bg-emerald-500' : (metadatos.ocupacion_patio_rrpp_pct ?? 30) <= 70 ? 'bg-amber-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(100, metadatos.ocupacion_patio_rrpp_pct ?? 30)}%` }}
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-2">
-                Recinto en condiciones óptimas de orden, segregación química y limpieza perimetral según matriz de compatibilidad.
-              </p>
-            </div>
+            )}
           </div>
         </div>
 
@@ -1025,12 +1140,35 @@ export default function ReporteMensual() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print-break-inside">
           {/* Tareas en Sitio */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 card-print">
-            <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              Bitácora de Tareas y Actividades en Sitio
-            </h3>
-            <ul className="space-y-2 text-sm text-slate-300">
-              {(metadatos.tareas_sitio && metadatos.tareas_sitio.length > 0) ? (
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                Bitácora de Tareas y Actividades en Sitio
+              </h3>
+              <span className="text-xs text-slate-400 font-mono">
+                {tareas.filter((t) => t.completada).length} / {tareas.length} realizadas
+              </span>
+            </div>
+            <ul className="space-y-2.5 text-sm text-slate-300">
+              {tareas.length > 0 ? (
+                tareas.map((t) => (
+                  <li key={t.tarea_id} className="flex items-start gap-2.5">
+                    {t.completada ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full border border-slate-600 shrink-0 mt-0.5 inline-block" />
+                    )}
+                    <div className={t.completada ? 'text-slate-200' : 'text-slate-500 line-through'}>
+                      <span>{t.tarea_nombre}</span>
+                      {t.detalle_adicional && (
+                        <p className="text-xs text-slate-400 font-normal italic mt-0.5">
+                          Nota: {t.detalle_adicional}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))
+              ) : (metadatos.tareas_sitio && metadatos.tareas_sitio.length > 0) ? (
                 metadatos.tareas_sitio.map((t, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-emerald-400 font-bold">•</span>
@@ -1038,13 +1176,9 @@ export default function ReporteMensual() {
                   </li>
                 ))
               ) : (
-                <>
-                  <li className="flex items-start gap-2"><span className="text-emerald-400">•</span> Recepción, pesaje y compactación de RSU.</li>
-                  <li className="flex items-start gap-2"><span className="text-emerald-400">•</span> Enfardado y acopio clasificado de plásticos y cartón.</li>
-                  <li className="flex items-start gap-2"><span className="text-emerald-400">•</span> Acondicionamiento y trasvase de aceites e hidrocarburos (Y8/Y9).</li>
-                  <li className="flex items-start gap-2"><span className="text-emerald-400">•</span> Muestreo y remediación de suelos contaminados (Y48).</li>
-                  <li className="flex items-start gap-2"><span className="text-emerald-400">•</span> Mantenimiento y orden perimetral en patios de acopio.</li>
-                </>
+                <li className="text-slate-500 italic py-2">
+                  No hay tareas registradas para este cliente. Utilice &quot;Auditar Patios / Tareas&quot; para registrar actividades.
+                </li>
               )}
             </ul>
           </div>
@@ -1093,84 +1227,253 @@ export default function ReporteMensual() {
 
       {/* MODAL PARA CONFIGURAR BITÁCORA Y PATIOS (Solo Admin y Sup Global) */}
       {isConfigModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm modal-backdrop">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm modal-backdrop overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-amber-400" />
-                Configurar Bitácora y Ocupación de Patios
-              </h3>
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-amber-400" />
+                  Auditoría Mensual: Patios y Bitácora de Faena
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Cliente: <strong className="text-slate-200">{clienteActivo?.razon_social}</strong> | Período: {mesNombre} {selectedAnio}
+                </p>
+              </div>
               <button
                 onClick={() => setIsConfigModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
+            {/* 1. Datos Generales del Informe */}
+            <div className="space-y-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                1. Identificación y Conclusiones del Período
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-1">
                   <label className="text-slate-400 text-xs block mb-1">N° Informe</label>
                   <input
                     type="number"
                     value={editNumeroInforme}
                     onChange={(e) => setEditNumeroInforme(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-violet-500 focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="text-slate-400 text-xs block mb-1">% Patio RSU</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editOcupacionRSU}
-                    onChange={(e) => setEditOcupacionRSU(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                <div className="sm:col-span-3">
+                  <label className="text-slate-400 text-xs block mb-1">Conclusiones y Dictamen Ambiental</label>
+                  <textarea
+                    rows={3}
+                    value={editConclusiones}
+                    onChange={(e) => setEditConclusiones(e.target.value)}
+                    placeholder="Conclusiones ejecutivas y dictamen del mes..."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-xs focus:border-violet-500 focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="text-slate-400 text-xs block mb-1">% Patio RRPP</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editOcupacionRRPP}
-                    onChange={(e) => setEditOcupacionRRPP(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-xs block mb-1">Tareas en Sitio (una por línea)</label>
-                <textarea
-                  rows={4}
-                  value={editTareas}
-                  onChange={(e) => setEditTareas(e.target.value)}
-                  placeholder="Recepción y pesaje...&#10;Enfardado de cartón...&#10;Acondicionamiento de Y8..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-xs font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-xs block mb-1">Conclusiones Ambientales</label>
-                <textarea
-                  rows={4}
-                  value={editConclusiones}
-                  onChange={(e) => setEditConclusiones(e.target.value)}
-                  placeholder="Conclusiones ejecutivas del período..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-xs"
-                />
               </div>
             </div>
 
+            {/* 2. Patios de Acopio del Cliente */}
+            <div className="space-y-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  2. Ocupación de Patios de Acopio ({editPatios.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddPatio(!showAddPatio)}
+                  className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 font-semibold"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{showAddPatio ? 'Cancelar' : 'Nuevo Patio'}</span>
+                </button>
+              </div>
+
+              {/* Formulario para agregar patio */}
+              {showAddPatio && (
+                <div className="p-3 bg-slate-900 border border-violet-500/30 rounded-xl space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nombre del patio (ej: Patio RSU)"
+                      value={nuevoPatioNombre}
+                      onChange={(e) => setNuevoPatioNombre(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                    />
+                    <select
+                      value={nuevoPatioTipo}
+                      onChange={(e) => setNuevoPatioTipo(e.target.value as any)}
+                      className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                    >
+                      <option value="rsu">RSU</option>
+                      <option value="rrpp">RRPP</option>
+                      <option value="reciclable">Reciclable</option>
+                      <option value="inerte">Inerte</option>
+                      <option value="general">General</option>
+                    </select>
+                    <div className="flex gap-1">
+                      <input
+                        type="number"
+                        placeholder="Capacidad"
+                        value={nuevoPatioCapacidad}
+                        onChange={(e) => setNuevoPatioCapacidad(e.target.value ? Number(e.target.value) : '')}
+                        className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white w-2/3"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Unidad (m2/m3)"
+                        value={nuevoPatioUnidad}
+                        onChange={(e) => setNuevoPatioUnidad(e.target.value)}
+                        className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white w-1/3"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleAgregarPatio}
+                      className="px-3 py-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg"
+                    >
+                      Guardar Nuevo Patio
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de patios editables */}
+              <div className="space-y-3">
+                {editPatios.map((p, idx) => (
+                  <div key={p.patio_id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-white flex items-center gap-2">
+                        <span>{p.patio_nombre}</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+                          {p.patio_tipo}
+                        </span>
+                      </span>
+                      <span className="font-mono font-bold text-violet-400 text-sm">
+                        {p.porcentaje_ocupacion}%
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center">
+                      <div className="sm:col-span-2 flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={p.porcentaje_ocupacion}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            setEditPatios((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, porcentaje_ocupacion: val } : item))
+                            )
+                          }}
+                          className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={p.porcentaje_ocupacion}
+                          onChange={(e) => {
+                            const val = Math.min(100, Math.max(0, Number(e.target.value)))
+                            setEditPatios((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, porcentaje_ocupacion: val } : item))
+                            )
+                          }}
+                          className="w-16 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-center text-xs text-white font-mono"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <input
+                          type="text"
+                          placeholder="Observaciones de auditoría..."
+                          value={p.observaciones || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setEditPatios((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, observaciones: val } : item))
+                            )
+                          }}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Tareas Operativas de Faena */}
+            <div className="space-y-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  3. Bitácora de Tareas en Sitio ({editTareas.filter((t) => t.completada).length} / {editTareas.length})
+                </span>
+              </div>
+
+              {/* Input para agregar tarea rápida */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nueva tarea de faena para este cliente..."
+                  value={nuevaTareaTexto}
+                  onChange={(e) => setNuevaTareaTexto(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAgregarTarea()
+                    }
+                  }}
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleAgregarTarea}
+                  disabled={!nuevaTareaTexto.trim()}
+                  className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Agregar</span>
+                </button>
+              </div>
+
+              {/* Lista de tareas con checkboxes */}
+              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-800/60">
+                {editTareas.map((t, idx) => (
+                  <div
+                    key={t.tarea_id}
+                    onClick={() => {
+                      setEditTareas((prev) =>
+                        prev.map((item, i) => (i === idx ? { ...item, completada: !item.completada } : item))
+                      )
+                    }}
+                    className="flex items-start gap-2.5 pt-2 cursor-pointer group"
+                  >
+                    <div className="mt-0.5 text-slate-400 group-hover:text-violet-400">
+                      {t.completada ? (
+                        <CheckSquare className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-600" />
+                      )}
+                    </div>
+                    <span className={`text-xs ${t.completada ? 'text-slate-200' : 'text-slate-500 line-through'}`}>
+                      {t.tarea_nombre}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Acciones de Modal */}
             <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setIsConfigModalOpen(false)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 transition"
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 transition text-sm"
               >
                 Cancelar
               </button>
@@ -1178,7 +1481,7 @@ export default function ReporteMensual() {
                 type="button"
                 onClick={handleGuardarConfig}
                 disabled={savingConfig}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl shadow-lg transition"
+                className="px-5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition text-sm"
               >
                 {savingConfig ? 'Guardando...' : 'Guardar Bitácora'}
               </button>
