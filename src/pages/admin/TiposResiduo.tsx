@@ -26,6 +26,9 @@ interface FormData {
   descripcion: string
   requiere_foto: boolean
   activo: boolean
+  clasificacion_id: number
+  codigo_y_id: number | null
+  unidad_medida_defecto_id: number
 }
 
 export default function TiposResiduo() {
@@ -33,6 +36,9 @@ export default function TiposResiduo() {
 
   const [items, setItems] = useState<TipoResiduoRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [clasificaciones, setClasificaciones] = useState<{ id: number; nombre: string; color_hex: string }[]>([])
+  const [codigosY, setCodigosY] = useState<{ id: number; codigo: string; nombre_comun: string }[]>([])
+  const [unidadesMedida, setUnidadesMedida] = useState<{ id: number; nombre: string; simbolo: string }[]>([])
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -47,6 +53,9 @@ export default function TiposResiduo() {
     descripcion: '',
     requiere_foto: false,
     activo: true,
+    clasificacion_id: 1,
+    codigo_y_id: null,
+    unidad_medida_defecto_id: 1,
   })
   const [formErrors, setFormErrors] = useState<{ nombre?: string }>({})
   const [saving, setSaving] = useState(false)
@@ -62,19 +71,23 @@ export default function TiposResiduo() {
     loading: false,
   })
 
-  // Fetch Items
+  // Fetch Items & Catalogos
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('tipos_residuo')
-        .select('*')
-        .order('id', { ascending: true })
+      const [tiposRes, clasifRes, codigosRes, umRes] = await Promise.all([
+        supabase.from('tipos_residuo').select('*').order('id', { ascending: true }),
+        supabase.from('clasificaciones_residuo').select('id, nombre, color_hex').order('orden_reporte', { ascending: true }),
+        supabase.from('codigos_y').select('id, codigo, nombre_comun').order('codigo', { ascending: true }),
+        supabase.from('unidades_medida').select('id, nombre, simbolo').order('id', { ascending: true })
+      ])
 
-      if (error) {
-        throw error
-      }
-      setItems(data || [])
+      if (tiposRes.error) throw tiposRes.error
+      setItems(tiposRes.data || [])
+
+      if (!clasifRes.error && clasifRes.data) setClasificaciones(clasifRes.data)
+      if (!codigosRes.error && codigosRes.data) setCodigosY(codigosRes.data)
+      if (!umRes.error && umRes.data) setUnidadesMedida(umRes.data)
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Error al cargar los tipos de residuo'
       toast.error(errorMsg)
@@ -118,6 +131,9 @@ export default function TiposResiduo() {
       descripcion: '',
       requiere_foto: false,
       activo: true,
+      clasificacion_id: clasificaciones[0]?.id || 1,
+      codigo_y_id: null,
+      unidad_medida_defecto_id: unidadesMedida[0]?.id || 1,
     })
     setFormErrors({})
     setIsModalOpen(true)
@@ -131,6 +147,9 @@ export default function TiposResiduo() {
       descripcion: item.descripcion || '',
       requiere_foto: !!item.requiere_foto,
       activo: item.activo ?? true,
+      clasificacion_id: item.clasificacion_id,
+      codigo_y_id: item.codigo_y_id,
+      unidad_medida_defecto_id: item.unidad_medida_defecto_id,
     })
     setFormErrors({})
     setIsModalOpen(true)
@@ -189,6 +208,9 @@ export default function TiposResiduo() {
             descripcion: formData.descripcion.trim() || null,
             requiere_foto: formData.requiere_foto,
             activo: formData.activo,
+            clasificacion_id: formData.clasificacion_id,
+            codigo_y_id: formData.codigo_y_id,
+            unidad_medida_defecto_id: formData.unidad_medida_defecto_id,
             updated_at: new Date().toISOString(),
           })
           .eq('id', formData.id)
@@ -204,6 +226,9 @@ export default function TiposResiduo() {
             descripcion: formData.descripcion.trim() || null,
             requiere_foto: formData.requiere_foto,
             activo: formData.activo,
+            clasificacion_id: formData.clasificacion_id,
+            codigo_y_id: formData.codigo_y_id,
+            unidad_medida_defecto_id: formData.unidad_medida_defecto_id,
           })
 
         if (error) throw error
@@ -511,6 +536,55 @@ export default function TiposResiduo() {
                     placeholder="Detalles sobre clasificación, peso estándar o precauciones..."
                     className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors resize-none"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Corriente / Clasificación <span className="text-rose-400">*</span>
+                    </label>
+                    <select
+                      value={formData.clasificacion_id}
+                      onChange={(e) => setFormData({ ...formData, clasificacion_id: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-violet-500 cursor-pointer"
+                    >
+                      {clasificaciones.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Unidad de Medida Defecto <span className="text-rose-400">*</span>
+                    </label>
+                    <select
+                      value={formData.unidad_medida_defecto_id}
+                      onChange={(e) => setFormData({ ...formData, unidad_medida_defecto_id: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-violet-500 cursor-pointer"
+                    >
+                      {unidadesMedida.map((u) => (
+                        <option key={u.id} value={u.id}>{u.simbolo} ({u.nombre})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex justify-between items-center">
+                    <span>Código Legal (Ley 24.051 / Basilea)</span>
+                    <span className="text-[10px] text-slate-500">Solo para peligrosos</span>
+                  </label>
+                  <select
+                    value={formData.codigo_y_id || ''}
+                    onChange={(e) => setFormData({ ...formData, codigo_y_id: e.target.value ? Number(e.target.value) : null })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-violet-500 cursor-pointer"
+                  >
+                    <option value="">Ninguno (No peligroso)</option>
+                    {codigosY.map((y) => (
+                      <option key={y.id} value={y.id}>{y.codigo} - {y.nombre_comun}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">

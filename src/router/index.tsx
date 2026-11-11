@@ -17,6 +17,7 @@ import GenerarMagicLink from '../pages/operador/GenerarMagicLink'
 // Supervisor pages
 import DashboardGlobal from '../pages/supervisor-global/DashboardGlobal'
 import DashboardCliente from '../pages/supervisor-cliente/DashboardCliente'
+import ReporteMensual from '../pages/reportes/ReporteMensual'
 
 // Public depositante page
 import SubirFotos from '../pages/magic-link/SubirFotos'
@@ -132,6 +133,16 @@ export default function AppRouter() {
         element={
           <ProtectedRoute allowedRoles={['supervisor_cliente', 'administrador']}>
             <DashboardCliente />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Módulo de Informes Mensuales (Auditoría Minera / Ley 24.051) */}
+      <Route
+        path="/reportes/mensual"
+        element={
+          <ProtectedRoute allowedRoles={['administrador', 'supervisor_global', 'supervisor_cliente']}>
+            <ReporteMensual />
           </ProtectedRoute>
         }
       />

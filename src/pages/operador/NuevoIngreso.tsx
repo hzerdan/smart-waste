@@ -19,7 +19,9 @@ import {
   X,
   Info,
   Scale,
-  DollarSign
+  DollarSign,
+  Boxes,
+  AlertTriangle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,6 +39,20 @@ interface TipoResiduo {
   id: number
   nombre: string
   requiere_foto: boolean | null
+  unidad_medida_defecto_id: number
+}
+
+interface Contratista {
+  id: number
+  nombre_fantasia: string
+}
+
+interface UnidadMedida {
+  id: number
+  codigo: string
+  nombre: string
+  simbolo: string
+  es_pesable: boolean
 }
 
 export default function NuevoIngreso() {
@@ -51,11 +67,18 @@ export default function NuevoIngreso() {
   const [assignedClientName, setAssignedClientName] = useState<string>('')
   const [areas, setAreas] = useState<Area[]>([])
   const [tiposResiduo, setTiposResiduo] = useState<TipoResiduo[]>([])
+  const [contratistas, setContratistas] = useState<Contratista[]>([])
+  const [unidadesMedida, setUnidadesMedida] = useState<UnidadMedida[]>([])
 
   // Estado del formulario
   const [selectedCliente, setSelectedCliente] = useState<string>('')
   const [selectedArea, setSelectedArea] = useState<string>('')
   const [selectedTipoResiduo, setSelectedTipoResiduo] = useState<string>('')
+  const [selectedContratista, setSelectedContratista] = useState<string>('')
+  const [selectedUnidadMedida, setSelectedUnidadMedida] = useState<string>('')
+  const [cantidadBultos, setCantidadBultos] = useState('')
+  const [esDesvio, setEsDesvio] = useState<boolean>(false)
+  const [motivoDesvio, setMotivoDesvio] = useState('')
   const [depositanteNombre, setDepositanteNombre] = useState('')
   const [depositanteReferencia, setDepositanteReferencia] = useState('')
   const [peso, setPeso] = useState('')
@@ -83,12 +106,26 @@ export default function NuevoIngreso() {
         // Cargar tipos de residuo activos
         const { data: tiposData, error: tiposErr } = await supabase
           .from('tipos_residuo')
-          .select('id, nombre, requiere_foto')
+          .select('id, nombre, requiere_foto, unidad_medida_defecto_id')
           .eq('activo', true)
           .order('nombre', { ascending: true })
 
         if (tiposErr) throw tiposErr
         setTiposResiduo(tiposData || [])
+
+        // Cargar unidades de medida activas
+        const { data: umData, error: umErr } = await supabase
+          .from('unidades_medida')
+          .select('id, codigo, nombre, simbolo, es_pesable')
+          .eq('activo', true)
+          .order('id', { ascending: true })
+
+        if (!umErr && umData) {
+          setUnidadesMedida(umData)
+          // Preseleccionar kg por defecto
+          const kg = umData.find(u => u.codigo === 'kg')
+          if (kg) setSelectedUnidadMedida(String(kg.id))
+        }
 
         if (isClientScoped && clienteId) {
           // Si el usuario pertenece a una empresa específica, fijar el cliente
@@ -123,35 +160,49 @@ export default function NuevoIngreso() {
     loadInitialData()
   }, [isClientScoped, clienteId])
 
-  // Cargar áreas dinámicamente según el cliente seleccionado
+  // Cargar áreas y contratistas dinámicamente según el cliente seleccionado
   useEffect(() => {
     setSelectedArea('')
+    setSelectedContratista('')
     setAreas([])
+    setContratistas([])
 
     const currentClienteId = isClientScoped && clienteId ? clienteId : (selectedCliente ? parseInt(selectedCliente) : null)
 
     if (!currentClienteId) return
 
-    async function loadAreasForCliente(cId: number) {
+    async function loadAreasAndContratistas(cId: number) {
       try {
         setLoadingAreas(true)
-        const { data: areasData, error: areasErr } = await supabase
-          .from('areas')
-          .select('id, nombre')
-          .eq('cliente_id', cId)
-          .eq('activo', true)
-          .order('nombre', { ascending: true })
+        const [areasRes, contRes] = await Promise.all([
+          supabase
+            .from('areas')
+            .select('id, nombre')
+            .eq('cliente_id', cId)
+            .eq('activo', true)
+            .order('nombre', { ascending: true }),
+          supabase
+            .from('contratistas')
+            .select('id, nombre_fantasia')
+            .eq('cliente_id', cId)
+            .eq('activo', true)
+            .order('nombre_fantasia', { ascending: true })
+        ])
 
-        if (areasErr) throw areasErr
-        setAreas(areasData || [])
+        if (areasRes.error) throw areasRes.error
+        setAreas(areasRes.data || [])
+
+        if (!contRes.error && contRes.data) {
+          setContratistas(contRes.data)
+        }
       } catch (err: any) {
-        setErrorMsg('Error al cargar áreas: ' + err.message)
+        setErrorMsg('Error al cargar áreas y contratistas: ' + err.message)
       } finally {
         setLoadingAreas(false)
       }
     }
 
-    loadAreasForCliente(currentClienteId)
+    loadAreasAndContratistas(currentClienteId)
   }, [selectedCliente, isClientScoped, clienteId])
 
   // Revocar URLs al desmontar o cambiar previews
@@ -264,6 +315,10 @@ export default function NuevoIngreso() {
       return
     }
 
+    const defaultUm = unidadesMedida.find(u => u.codigo === 'kg')?.id || 1
+    const finalUnidadMedidaId = selectedUnidadMedida ? parseInt(selectedUnidadMedida) : (tipoSelected?.unidad_medida_defecto_id || defaultUm)
+    const parsedBultos = cantidadBultos.trim() ? parseFloat(cantidadBultos) : null
+
     try {
       // 1. Insertar registro de ingreso
       const insertPayload: Database['public']['Tables']['registros_ingreso']['Insert'] = {
@@ -275,6 +330,11 @@ export default function NuevoIngreso() {
         depositante_referencia: depositanteReferencia.trim() || null,
         peso: parsedPeso,
         importe: parsedImporte,
+        unidad_medida_id: finalUnidadMedidaId,
+        contratista_id: selectedContratista ? parseInt(selectedContratista) : null,
+        cantidad_bultos: parsedBultos,
+        es_desvio: esDesvio,
+        motivo_desvio: esDesvio ? (motivoDesvio.trim() || 'Mezcla indebida de materiales') : null,
         observaciones: observaciones.trim() || null,
         estado: selectedFiles.length > 0 ? 'completo' : 'pendiente'
       }
@@ -336,6 +396,10 @@ export default function NuevoIngreso() {
     }
     setSelectedArea('')
     setSelectedTipoResiduo('')
+    setSelectedContratista('')
+    setCantidadBultos('')
+    setEsDesvio(false)
+    setMotivoDesvio('')
     setDepositanteNombre('')
     setDepositanteReferencia('')
     setPeso('')
@@ -468,6 +532,28 @@ export default function NuevoIngreso() {
                 </select>
               </div>
 
+              {/* Empresa Contratista */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                    Empresa / Subcontratista
+                  </span>
+                  <span className="text-[10px] text-slate-500 lowercase bg-slate-900 px-2 py-0.5 rounded border border-slate-800">opcional</span>
+                </label>
+                <select
+                  value={selectedContratista}
+                  onChange={(e) => setSelectedContratista(e.target.value)}
+                  className="w-full py-3 px-4 bg-slate-950/50 border border-slate-800 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all cursor-pointer disabled:opacity-40"
+                  disabled={!selectedCliente && !isClientScoped}
+                >
+                  <option value="">Personal Directo de Planta</option>
+                  {contratistas.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre_fantasia}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Tipo de Residuo */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -476,7 +562,16 @@ export default function NuevoIngreso() {
                 </label>
                 <select
                   value={selectedTipoResiduo}
-                  onChange={(e) => setSelectedTipoResiduo(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setSelectedTipoResiduo(val)
+                    if (val) {
+                      const t = tiposResiduo.find(item => item.id === parseInt(val))
+                      if (t && t.unidad_medida_defecto_id) {
+                        setSelectedUnidadMedida(String(t.unidad_medida_defecto_id))
+                      }
+                    }
+                  }}
                   className="w-full py-3 px-4 bg-slate-950/50 border border-slate-800 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all cursor-pointer"
                   required
                 >
@@ -515,7 +610,7 @@ export default function NuevoIngreso() {
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
-                  Referencia de Depositante (DNI, Patente, Empresa)
+                  Referencia de Depositante (DNI, Patente, Remito)
                 </label>
                 <input
                   type="text"
@@ -526,13 +621,13 @@ export default function NuevoIngreso() {
                 />
               </div>
 
-              {/* Peso (kg) */}
+              {/* Pesaje y Unidad de Medida */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Scale className="w-3.5 h-3.5" />
-                  Peso del Material (kg) *
+                  Pesaje o Volumen *
                 </label>
-                <div className="relative">
+                <div className="flex gap-2">
                   <input
                     type="number"
                     step="0.01"
@@ -540,17 +635,45 @@ export default function NuevoIngreso() {
                     value={peso}
                     onChange={(e) => setPeso(e.target.value)}
                     placeholder="Ej. 450.50"
-                    className="w-full py-3 px-4 pr-12 bg-slate-950/50 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-mono"
+                    className="flex-1 py-3 px-4 bg-slate-950/50 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-mono"
                     required
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
-                    kg
-                  </span>
+                  <select
+                    value={selectedUnidadMedida}
+                    onChange={(e) => setSelectedUnidadMedida(e.target.value)}
+                    className="w-32 py-3 px-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-violet-500/50 cursor-pointer"
+                  >
+                    {unidadesMedida.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.simbolo} ({u.nombre})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Importe ($) Opcional */}
+              {/* Cantidad de Bolsas / Bultos */}
               <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Boxes className="w-3.5 h-3.5" />
+                    Cantidad de Bolsas / Bultos
+                  </span>
+                  <span className="text-[10px] text-slate-500 lowercase bg-slate-900 px-2 py-0.5 rounded border border-slate-800">opcional</span>
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  value={cantidadBultos}
+                  onChange={(e) => setCantidadBultos(e.target.value)}
+                  placeholder="Ej. 29 bolsas, 10 tarimas"
+                  className="w-full py-3 px-4 bg-slate-950/50 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-mono"
+                />
+              </div>
+
+              {/* Importe ($) Opcional */}
+              <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <DollarSign className="w-3.5 h-3.5" />
@@ -573,6 +696,54 @@ export default function NuevoIngreso() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Control de Calidad / Desvío Operativo */}
+            <div className={`p-4 rounded-xl border transition-all ${
+              esDesvio 
+                ? 'bg-amber-500/10 border-amber-500/40 text-amber-200' 
+                : 'bg-slate-950/30 border-slate-800/80 text-slate-400'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="checkDesvio"
+                    checked={esDesvio}
+                    onChange={(e) => setEsDesvio(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500/50 cursor-pointer accent-amber-500"
+                  />
+                  <label htmlFor="checkDesvio" className="text-sm font-bold text-slate-200 cursor-pointer flex items-center gap-2">
+                    <AlertTriangle className={`w-4 h-4 ${esDesvio ? 'text-amber-400' : 'text-slate-500'}`} />
+                    Marcar como Desvío Operativo / No Conformidad
+                  </label>
+                </div>
+                {esDesvio && (
+                  <span className="text-xs px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold uppercase">
+                    Auditoría
+                  </span>
+                )}
+              </div>
+
+              {esDesvio && (
+                <div className="mt-3 pt-3 border-t border-amber-500/20 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-amber-300 block mb-1">Motivo del Desvío</label>
+                    <select
+                      value={motivoDesvio}
+                      onChange={(e) => setMotivoDesvio(e.target.value)}
+                      className="w-full py-2 px-3 bg-slate-900 border border-amber-500/30 rounded-lg text-white text-xs cursor-pointer"
+                    >
+                      <option value="Mezcla c/ reciclable">Mezcla c/ reciclable</option>
+                      <option value="Mezcla c/ inerte">Mezcla c/ inerte</option>
+                      <option value="Mezcla de Y48">Mezcla de Y48 (peligroso)</option>
+                      <option value="Decomiso">Decomiso de cocina/alimentos</option>
+                      <option value="Falta de rotulación">Falta de rotulación / bolsa inadecuada</option>
+                      <option value="Derrame o rotura">Derrame o rotura de envase</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Subida de Fotos con Previews */}

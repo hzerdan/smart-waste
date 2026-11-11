@@ -15,7 +15,8 @@ import {
   User,
   Shield,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -45,11 +46,13 @@ export default function Layout({ children }: LayoutProps) {
       { name: 'Tipos de Residuo', path: '/admin/tipos-residuo', icon: Trash2 },
       { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
       { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 },
-      { name: 'Dashboard Global', path: '/supervisor-global', icon: BarChart3 }
+      { name: 'Dashboard Global', path: '/supervisor-global', icon: BarChart3 },
+      { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText }
     )
   } else if (isSupervisorGlobal) {
     menuItems.push(
       { name: 'Dashboard Global', path: '/supervisor-global', icon: BarChart3 },
+      { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText },
       { name: 'Clientes', path: '/admin/clientes', icon: Building2 },
       { name: 'Categorías de Área', path: '/admin/categorias-area', icon: Layers },
       { name: 'Áreas por Cliente', path: '/admin/areas', icon: Map },
@@ -60,6 +63,7 @@ export default function Layout({ children }: LayoutProps) {
   } else if (isSupervisorCliente) {
     menuItems.push(
       { name: 'Dashboard Cliente', path: '/supervisor-cliente', icon: BarChart3 },
+      { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText },
       { name: 'Áreas de mi Empresa', path: '/admin/areas', icon: Map },
       { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
       { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 }
