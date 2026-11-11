@@ -11,6 +11,7 @@ import CategoriasArea from '../pages/admin/CategoriasArea'
 import TiposResiduo from '../pages/admin/TiposResiduo'
 import Patios from '../pages/admin/Patios'
 import TareasFaena from '../pages/admin/TareasFaena'
+import CodigosY from '../pages/admin/CodigosY'
 
 // Operator pages
 import NuevoIngreso from '../pages/operador/NuevoIngreso'
@@ -97,6 +98,14 @@ export default function AppRouter() {
         element={
           <ProtectedRoute allowedRoles={['administrador', 'supervisor_global', 'supervisor_cliente']}>
             <TareasFaena />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/codigos-y"
+        element={
+          <ProtectedRoute allowedRoles={['administrador', 'supervisor_global']}>
+            <CodigosY />
           </ProtectedRoute>
         }
       />

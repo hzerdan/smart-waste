@@ -19,7 +19,8 @@ import {
   FileText,
   ChevronDown,
   Database,
-  ClipboardList
+  ClipboardList,
+  Scale
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -45,7 +46,8 @@ export default function Layout({ children }: LayoutProps) {
     '/admin/areas',
     '/admin/tipos-residuo',
     '/admin/patios',
-    '/admin/tareas-faena'
+    '/admin/tareas-faena',
+    '/admin/codigos-y'
   ].some((path) => location.pathname.startsWith(path))
 
   const [tablasMaestrasOpen, setTablasMaestrasOpen] = React.useState(isMasterDataRoute)
@@ -96,13 +98,15 @@ export default function Layout({ children }: LayoutProps) {
       { name: 'Áreas por Cliente', path: '/admin/areas', icon: Map },
       { name: 'Tipos de Residuo', path: '/admin/tipos-residuo', icon: Trash2 },
       { name: 'Patios de Acopio', path: '/admin/patios', icon: Layers },
-      { name: 'Tareas de Faena', path: '/admin/tareas-faena', icon: ClipboardList }
+      { name: 'Tareas de Faena', path: '/admin/tareas-faena', icon: ClipboardList },
+      { name: 'Códigos Y (Ley 24.051)', path: '/admin/codigos-y', icon: Scale }
     )
   } else if (isSupervisorCliente) {
     masterItems.push(
       { name: 'Áreas de mi Empresa', path: '/admin/areas', icon: Map },
       { name: 'Patios de Acopio', path: '/admin/patios', icon: Layers },
-      { name: 'Tareas de Faena', path: '/admin/tareas-faena', icon: ClipboardList }
+      { name: 'Tareas de Faena', path: '/admin/tareas-faena', icon: ClipboardList },
+      { name: 'Códigos Y (Ley 24.051)', path: '/admin/codigos-y', icon: Scale }
     )
   }
 
