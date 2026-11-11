@@ -9,6 +9,8 @@ import Clientes from '../pages/admin/Clientes'
 import Areas from '../pages/admin/Areas'
 import CategoriasArea from '../pages/admin/CategoriasArea'
 import TiposResiduo from '../pages/admin/TiposResiduo'
+import Patios from '../pages/admin/Patios'
+import TareasFaena from '../pages/admin/TareasFaena'
 
 // Operator pages
 import NuevoIngreso from '../pages/operador/NuevoIngreso'
@@ -79,6 +81,22 @@ export default function AppRouter() {
         element={
           <ProtectedRoute allowedRoles={['administrador', 'supervisor_global']}>
             <TiposResiduo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/patios"
+        element={
+          <ProtectedRoute allowedRoles={['administrador', 'supervisor_global', 'supervisor_cliente']}>
+            <Patios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/tareas-faena"
+        element={
+          <ProtectedRoute allowedRoles={['administrador', 'supervisor_global', 'supervisor_cliente']}>
+            <TareasFaena />
           </ProtectedRoute>
         }
       />

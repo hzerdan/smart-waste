@@ -16,11 +16,20 @@ import {
   Shield,
   Menu,
   X,
-  FileText
+  FileText,
+  ChevronDown,
+  Database,
+  ClipboardList
 } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
+}
+
+interface NavItem {
+  name: string
+  path: string
+  icon: React.ElementType
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -29,49 +38,78 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
+  // Determinar si la ruta actual pertenece a las tablas maestras
+  const isMasterDataRoute = [
+    '/admin/clientes',
+    '/admin/categorias-area',
+    '/admin/areas',
+    '/admin/tipos-residuo',
+    '/admin/patios',
+    '/admin/tareas-faena'
+  ].some((path) => location.pathname.startsWith(path))
+
+  const [tablasMaestrasOpen, setTablasMaestrasOpen] = React.useState(isMasterDataRoute)
+
+  React.useEffect(() => {
+    if (isMasterDataRoute) {
+      setTablasMaestrasOpen(true)
+    }
+  }, [isMasterDataRoute])
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     navigate('/login')
   }
 
-  // Definir links de navegación por rol
-  const menuItems = []
+  // Secciones de Navegación Estructuradas
+  const reportItems: NavItem[] = []
+  const operacionItems: NavItem[] = []
+  const masterItems: NavItem[] = []
+  const adminItems: NavItem[] = []
 
-  if (isAdmin) {
-    menuItems.push(
-      { name: 'Usuarios', path: '/admin/usuarios', icon: Users },
-      { name: 'Clientes', path: '/admin/clientes', icon: Building2 },
-      { name: 'Categorías de Área', path: '/admin/categorias-area', icon: Layers },
-      { name: 'Áreas por Cliente', path: '/admin/areas', icon: Map },
-      { name: 'Tipos de Residuo', path: '/admin/tipos-residuo', icon: Trash2 },
-      { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
-      { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 },
+  // 1. Reportes y Dashboards
+  if (isAdmin || isSupervisorGlobal) {
+    reportItems.push(
       { name: 'Dashboard Global', path: '/supervisor-global', icon: BarChart3 },
       { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText }
     )
-  } else if (isSupervisorGlobal) {
-    menuItems.push(
-      { name: 'Dashboard Global', path: '/supervisor-global', icon: BarChart3 },
-      { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText },
+  } else if (isSupervisorCliente) {
+    reportItems.push(
+      { name: 'Dashboard Cliente', path: '/supervisor-cliente', icon: BarChart3 },
+      { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText }
+    )
+  }
+
+  // 2. Operaciones
+  if (isAdmin || isSupervisorGlobal || isSupervisorCliente || isOperador) {
+    operacionItems.push(
+      { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
+      { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 }
+    )
+  }
+
+  // 3. Tablas Maestras (Submenú Desplegable)
+  if (isAdmin || isSupervisorGlobal) {
+    masterItems.push(
       { name: 'Clientes', path: '/admin/clientes', icon: Building2 },
       { name: 'Categorías de Área', path: '/admin/categorias-area', icon: Layers },
       { name: 'Áreas por Cliente', path: '/admin/areas', icon: Map },
       { name: 'Tipos de Residuo', path: '/admin/tipos-residuo', icon: Trash2 },
-      { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
-      { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 }
+      { name: 'Patios de Acopio', path: '/admin/patios', icon: Layers },
+      { name: 'Tareas de Faena', path: '/admin/tareas-faena', icon: ClipboardList }
     )
   } else if (isSupervisorCliente) {
-    menuItems.push(
-      { name: 'Dashboard Cliente', path: '/supervisor-cliente', icon: BarChart3 },
-      { name: 'Informe Mensual', path: '/reportes/mensual', icon: FileText },
+    masterItems.push(
       { name: 'Áreas de mi Empresa', path: '/admin/areas', icon: Map },
-      { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
-      { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 }
+      { name: 'Patios de Acopio', path: '/admin/patios', icon: Layers },
+      { name: 'Tareas de Faena', path: '/admin/tareas-faena', icon: ClipboardList }
     )
-  } else if (isOperador) {
-    menuItems.push(
-      { name: 'Nuevo Ingreso', path: '/operador/nuevo-ingreso', icon: PlusCircle },
-      { name: 'Generar Magic Link', path: '/operador/generar-magic-link', icon: Link2 }
+  }
+
+  // 4. Seguridad y Usuarios
+  if (isAdmin) {
+    adminItems.push(
+      { name: 'Usuarios', path: '/admin/usuarios', icon: Users }
     )
   }
 
@@ -93,6 +131,149 @@ export default function Layout({ children }: LayoutProps) {
 
   const label = role ? roleLabels[role] || role : 'Usuario'
   const badgeClass = role ? roleColors[role] || 'bg-slate-800 text-slate-400' : 'bg-slate-800 text-slate-400'
+
+  // Componente de Renderizado de Enlaces de Menú
+  const renderNavLinks = (onItemClick?: () => void) => (
+    <div className="space-y-4">
+      {/* Reportes & Monitoreo */}
+      {reportItems.length > 0 && (
+        <div className="space-y-1">
+          <div className="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+            Monitoreo & Reportes
+          </div>
+          {reportItems.map((item) => {
+            const isActive = location.pathname === item.path
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onItemClick}
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/20' 
+                    : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Operaciones */}
+      {operacionItems.length > 0 && (
+        <div className="space-y-1">
+          <div className="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+            Operaciones
+          </div>
+          {operacionItems.map((item) => {
+            const isActive = location.pathname === item.path
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onItemClick}
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/20' 
+                    : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Tablas Maestras (Desplegable) */}
+      {masterItems.length > 0 && (
+        <div className="space-y-1">
+          <div className="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+            Configuración
+          </div>
+          <button
+            type="button"
+            onClick={() => setTablasMaestrasOpen(!tablasMaestrasOpen)}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              isMasterDataRoute 
+                ? 'bg-slate-800/90 text-white border border-slate-700/80' 
+                : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Database className="w-4 h-4 text-violet-400" />
+              <span>Tablas Maestras</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] bg-slate-700/60 text-slate-300 px-1.5 py-0.5 rounded font-mono">
+                {masterItems.length}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                  tablasMaestrasOpen ? 'rotate-180 text-violet-400' : ''
+                }`}
+              />
+            </div>
+          </button>
+
+          {/* Submenú desplegable con sangría */}
+          {tablasMaestrasOpen && (
+            <div className="pl-3 pr-1 pt-1 space-y-1 border-l-2 border-violet-500/30 ml-4 my-1">
+              {masterItems.map((item) => {
+                const isActive = location.pathname === item.path
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onItemClick}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <item.icon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{item.name}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Seguridad & Sistema */}
+      {adminItems.length > 0 && (
+        <div className="space-y-1">
+          <div className="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+            Seguridad
+          </div>
+          {adminItems.map((item) => {
+            const isActive = location.pathname === item.path
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onItemClick}
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/20' 
+                    : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
@@ -122,24 +303,8 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/10' 
-                    : 'hover:bg-slate-800/60 hover:text-white'
-                }`}
-              >
-                <item.icon className="w-4.5 h-4.5" />
-                {item.name}
-              </Link>
-            )
-          })}
+        <nav className="flex-1 px-4 py-2 space-y-4 overflow-y-auto">
+          {renderNavLinks()}
         </nav>
 
         {/* Footer */}
@@ -173,7 +338,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm pt-16">
-          <div className="bg-slate-900 border-b border-slate-800 p-6 flex flex-col gap-4">
+          <div className="bg-slate-900 border-b border-slate-800 p-6 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center gap-3 p-3 bg-slate-950/30 rounded-xl border border-slate-800">
               <User className="w-5 h-5 text-slate-400" />
               <div>
@@ -184,25 +349,8 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </div>
 
-            <nav className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive = location.pathname === item.path
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg' 
-                        : 'hover:bg-slate-800/60 hover:text-white'
-                    }`}
-                  >
-                    <item.icon className="w-4.5 h-4.5" />
-                    {item.name}
-                  </Link>
-                )
-              })}
+            <nav className="space-y-4">
+              {renderNavLinks(() => setMobileMenuOpen(false))}
             </nav>
 
             <button
