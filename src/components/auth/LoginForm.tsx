@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { LogIn, Key, Mail, AlertTriangle, Eye, EyeOff } from 'lucide-react'
+import { Key, Mail, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -49,14 +49,12 @@ export default function LoginForm() {
       <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-600/10 rounded-full blur-3xl group-hover:bg-emerald-600/20 transition-all duration-700 pointer-events-none" />
 
       <div className="flex flex-col items-center mb-8 relative">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30 mb-4 animate-pulse">
-          <LogIn className="w-8 h-8 text-white" />
+        <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl mb-4">
+          <img src="/favicon.png" alt="Smart Waste Icon" className="w-12 h-12 object-contain" />
         </div>
-        <h2 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
-          Smart Waste
-        </h2>
-        <p className="text-sm text-slate-400 mt-2 font-medium">
-          Sistema de Control e Ingreso de Residuos
+        <img src="/logo-nav.png" alt="Smart Waste" className="h-10 w-auto object-contain mb-2" />
+        <p className="text-xs text-slate-400 font-medium text-center">
+          Gestión y Trazabilidad Integral de Residuos
         </p>
       </div>
 

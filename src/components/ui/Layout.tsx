@@ -13,7 +13,6 @@ import {
   BarChart3, 
   LogOut, 
   User,
-  Shield,
   Menu,
   X,
   FileText,
@@ -312,14 +311,14 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 text-slate-300">
-        <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-white leading-tight">Smart Waste</h1>
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Panel de Control</span>
-          </div>
+        <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+          <Link to="/dashboard" className="flex items-center gap-3 group">
+            <img 
+              src="/logo-nav.png" 
+              alt="Smart Waste" 
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+            />
+          </Link>
         </div>
 
         {/* User Card */}
@@ -354,12 +353,9 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile Topbar */}
       <header className="md:hidden bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between text-slate-300">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-            <Shield className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-white">Smart Waste</span>
-        </div>
+        <Link to="/dashboard" className="flex items-center gap-3">
+          <img src="/logo-nav.png" alt="Smart Waste" className="h-8 w-auto object-contain" />
+        </Link>
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
