@@ -311,13 +311,22 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 text-slate-300">
-        <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+        <div className="p-5 border-b border-slate-800 flex items-center">
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <img 
-              src="/logo-nav.png" 
-              alt="Smart Waste" 
-              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
-            />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/80 flex items-center justify-center p-1.5 shadow-md group-hover:border-violet-500/50 transition-colors">
+              <img 
+                src="/logo-white.png" 
+                alt="Smart Waste" 
+                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-white text-base tracking-tight leading-none">Smart Waste</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              </div>
+              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold block mt-1">Gestión Ambiental</span>
+            </div>
           </Link>
         </div>
 
@@ -352,13 +361,19 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Mobile Topbar */}
-      <header className="md:hidden bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between text-slate-300">
-        <Link to="/dashboard" className="flex items-center gap-3">
-          <img src="/logo-nav.png" alt="Smart Waste" className="h-8 w-auto object-contain" />
+      <header className="md:hidden bg-slate-900 border-b border-slate-800 px-5 py-3.5 flex items-center justify-between text-slate-300">
+        <Link to="/dashboard" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center p-1">
+            <img src="/logo-white.png" alt="Smart Waste" className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <span className="font-extrabold text-white text-sm tracking-tight block leading-none">Smart Waste</span>
+            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Gestión Ambiental</span>
+          </div>
         </Link>
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>

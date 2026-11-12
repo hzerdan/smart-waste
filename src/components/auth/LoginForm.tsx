@@ -49,12 +49,18 @@ export default function LoginForm() {
       <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-600/10 rounded-full blur-3xl group-hover:bg-emerald-600/20 transition-all duration-700 pointer-events-none" />
 
       <div className="flex flex-col items-center mb-8 relative">
-        <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl mb-4">
-          <img src="/favicon.png" alt="Smart Waste Icon" className="w-12 h-12 object-contain" />
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-3 shadow-2xl shadow-violet-500/10 mb-4 flex items-center justify-center">
+          <img 
+            src="/logo-white.png" 
+            alt="Smart Waste Logo" 
+            className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(255,255,255,0.25)]" 
+          />
         </div>
-        <img src="/logo-nav.png" alt="Smart Waste" className="h-10 w-auto object-contain mb-2" />
-        <p className="text-xs text-slate-400 font-medium text-center">
-          Gestión y Trazabilidad Integral de Residuos
+        <h2 className="text-3xl font-extrabold text-white tracking-tight">
+          Smart Waste
+        </h2>
+        <p className="text-xs text-slate-400 mt-1.5 font-medium text-center">
+          Control Digital y Trazabilidad Integral en Faena
         </p>
       </div>
 
