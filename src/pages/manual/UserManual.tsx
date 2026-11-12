@@ -23,7 +23,10 @@ import {
   Eye,
   Sliders,
   Sparkles,
-  Database
+  Database,
+  Key,
+  Copy,
+  Check
 } from 'lucide-react'
 
 // Definición de tipos para las secciones del manual
@@ -42,6 +45,15 @@ export default function UserManual() {
   const [selectedRole, setSelectedRole] = useState<string>(role || 'administrador')
   const [activeSectionId, setActiveSectionId] = useState<string>('intro')
   const [searchTerm, setSearchTerm] = useState<string>('')
+  const [copiedText, setCopiedText] = useState<string | null>(null)
+
+  const handleCopy = (text: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text)
+      setCopiedText(text)
+      setTimeout(() => setCopiedText(null), 2000)
+    }
+  }
 
   // Secciones del Manual del Administrador General
   const adminSections: ManualSection[] = useMemo(() => [
@@ -345,7 +357,7 @@ export default function UserManual() {
     },
     {
       id: 'usuarios',
-      title: 'Gestión de Usuarios & Roles',
+      title: 'Usuarios, Roles & Credenciales QA',
       icon: Users,
       category: 'Seguridad',
       content: (
@@ -404,6 +416,231 @@ export default function UserManual() {
               Regla Crítica de Vinculación
             </div>
             Al dar de alta a un <strong>supervisor_cliente</strong> o un <strong>operador</strong>, es obligatorio seleccionar la empresa cliente correspondiente en el formulario. De lo contrario, las políticas de seguridad RLS impedirán que el usuario visualice sus registros e informes.
+          </div>
+
+          {/* Cuentas de Prueba & Credenciales QA */}
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Cuentas de Prueba & Credenciales QA</h4>
+                  <p className="text-[11px] text-slate-400">Credenciales activas para pruebas de roles y validación de permisos en QA</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 w-fit">
+                Clave común pruebas: SW2026
+              </span>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-800">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="px-4 py-2.5">Usuario / Email</th>
+                    <th className="px-4 py-2.5">Contraseña</th>
+                    <th className="px-4 py-2.5">Rol</th>
+                    <th className="px-4 py-2.5">Cliente Asignado</th>
+                    <th className="px-4 py-2.5 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                  {/* Supervisor Andes */}
+                  <tr className="hover:bg-slate-900/50 transition-colors">
+                    <td className="px-4 py-2.5 font-mono text-white">
+                      supervisor.andes@smartwaste.com
+                      <div className="text-[10px] font-sans text-slate-400">Martín Palermo</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-300 border border-slate-700">SW2026</span>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-cyan-400">supervisor_cliente</td>
+                    <td className="px-4 py-2.5 text-slate-200 font-medium">Minera Los Andes S.A.</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => handleCopy('supervisor.andes@smartwaste.com')}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px]"
+                        title="Copiar email"
+                      >
+                        {copiedText === 'supervisor.andes@smartwaste.com' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Operador Andes */}
+                  <tr className="hover:bg-slate-900/50 transition-colors">
+                    <td className="px-4 py-2.5 font-mono text-white">
+                      operador.andes@smartwaste.com
+                      <div className="text-[10px] font-sans text-slate-400">Carlos Tevez</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-300 border border-slate-700">SW2026</span>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-amber-400">operador</td>
+                    <td className="px-4 py-2.5 text-slate-200 font-medium">Minera Los Andes S.A.</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => handleCopy('operador.andes@smartwaste.com')}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px]"
+                        title="Copiar email"
+                      >
+                        {copiedText === 'operador.andes@smartwaste.com' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Supervisor Litio */}
+                  <tr className="hover:bg-slate-900/50 transition-colors">
+                    <td className="px-4 py-2.5 font-mono text-white">
+                      supervisor.litio@smartwaste.com
+                      <div className="text-[10px] font-sans text-slate-400">Román Riquelme</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-300 border border-slate-700">SW2026</span>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-cyan-400">supervisor_cliente</td>
+                    <td className="px-4 py-2.5 text-slate-200 font-medium">Litio del Norte S.A.</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => handleCopy('supervisor.litio@smartwaste.com')}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px]"
+                        title="Copiar email"
+                      >
+                        {copiedText === 'supervisor.litio@smartwaste.com' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Operador Litio */}
+                  <tr className="hover:bg-slate-900/50 transition-colors">
+                    <td className="px-4 py-2.5 font-mono text-white">
+                      operador.litio@smartwaste.com
+                      <div className="text-[10px] font-sans text-slate-400">Guillermo Barros</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-300 border border-slate-700">SW2026</span>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-amber-400">operador</td>
+                    <td className="px-4 py-2.5 text-slate-200 font-medium">Litio del Norte S.A.</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => handleCopy('operador.litio@smartwaste.com')}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px]"
+                        title="Copiar email"
+                      >
+                        {copiedText === 'operador.litio@smartwaste.com' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Operador Global */}
+                  <tr className="hover:bg-slate-900/50 transition-colors">
+                    <td className="px-4 py-2.5 font-mono text-white">
+                      operador.global@smartwaste.com
+                      <div className="text-[10px] font-sans text-slate-400">Javier Zanetti</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-300 border border-slate-700">SW2026</span>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-emerald-400">operador_global</td>
+                    <td className="px-4 py-2.5 text-slate-400 italic">Transversal / Todas las faenas</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => handleCopy('operador.global@smartwaste.com')}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px]"
+                        title="Copiar email"
+                      >
+                        {copiedText === 'operador.global@smartwaste.com' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Administrador */}
+                  <tr className="hover:bg-slate-900/50 transition-colors opacity-80">
+                    <td className="px-4 py-2.5 font-mono text-white">
+                      admin@smart.waste
+                      <div className="text-[10px] font-sans text-slate-400">Administrador General</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="text-[11px] text-slate-400 italic">[Clave de Admin]</span>
+                    </td>
+                    <td className="px-4 py-2.5 font-semibold text-rose-400">administrador</td>
+                    <td className="px-4 py-2.5 text-slate-400">Global</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => handleCopy('admin@smart.waste')}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px]"
+                        title="Copiar email"
+                      >
+                        {copiedText === 'admin@smart.waste' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-800">
@@ -596,7 +833,7 @@ export default function UserManual() {
         </div>
       )
     }
-  ], [])
+  ], [copiedText])
 
   // Filtrado de secciones según término de búsqueda
   const filteredSections = useMemo(() => {
